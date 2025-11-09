@@ -294,54 +294,79 @@ export const GanttChart: React.FC = () => {
                       );
                     })}
 
-                    {/* Task Bar */}
+                    {/* Task Bar or Milestone */}
                     <g>
-                      {/* Background bar */}
-                      <rect
-                        x={taskX}
-                        y={(ROW_HEIGHT - TASK_HEIGHT) / 2}
-                        width={taskWidth}
-                        height={TASK_HEIGHT}
-                        fill={task.color || theme.colors.taskBar}
-                        rx={4}
-                        opacity={0.3}
-                        stroke={isSelected ? '#000' : 'none'}
-                        strokeWidth={isSelected ? 2 : 0}
-                      />
+                      {task.isMilestone && viewOptions.showMilestones ? (
+                        /* Milestone Diamond */
+                        <>
+                          <polygon
+                            points={`${taskX + 16},${ROW_HEIGHT / 2 - 16} ${taskX + 32},${ROW_HEIGHT / 2} ${taskX + 16},${ROW_HEIGHT / 2 + 16} ${taskX},${ROW_HEIGHT / 2}`}
+                            fill={task.color || theme.colors.taskBar}
+                            stroke={isSelected ? '#000' : theme.colors.border}
+                            strokeWidth={isSelected ? 3 : 2}
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => handleTaskClick(task.id)}
+                            onMouseEnter={(e) =>
+                              handleTaskHover(
+                                e,
+                                `🏁 ${task.title}`,
+                                formatDate(task.startDate)
+                              )
+                            }
+                            onMouseLeave={handleMouseLeave}
+                          />
+                        </>
+                      ) : (
+                        /* Regular Task Bar */
+                        <>
+                          {/* Background bar */}
+                          <rect
+                            x={taskX}
+                            y={(ROW_HEIGHT - TASK_HEIGHT) / 2}
+                            width={taskWidth}
+                            height={TASK_HEIGHT}
+                            fill={task.color || theme.colors.taskBar}
+                            rx={4}
+                            opacity={0.3}
+                            stroke={isSelected ? '#000' : 'none'}
+                            strokeWidth={isSelected ? 2 : 0}
+                          />
 
-                      {/* Progress bar */}
-                      {viewOptions.showProgress && task.progress > 0 && (
-                        <rect
-                          x={taskX}
-                          y={(ROW_HEIGHT - TASK_HEIGHT) / 2}
-                          width={taskWidth * (task.progress / 100)}
-                          height={TASK_HEIGHT}
-                          fill={task.color || theme.colors.taskBarComplete}
-                          rx={4}
-                          stroke={isSelected ? '#000' : 'none'}
-                          strokeWidth={isSelected ? 2 : 0}
-                        />
+                          {/* Progress bar */}
+                          {viewOptions.showProgress && task.progress > 0 && (
+                            <rect
+                              x={taskX}
+                              y={(ROW_HEIGHT - TASK_HEIGHT) / 2}
+                              width={taskWidth * (task.progress / 100)}
+                              height={TASK_HEIGHT}
+                              fill={task.color || theme.colors.taskBarComplete}
+                              rx={4}
+                              stroke={isSelected ? '#000' : 'none'}
+                              strokeWidth={isSelected ? 2 : 0}
+                            />
+                          )}
+
+                          {/* Clickable overlay */}
+                          <rect
+                            x={taskX}
+                            y={(ROW_HEIGHT - TASK_HEIGHT) / 2}
+                            width={taskWidth}
+                            height={TASK_HEIGHT}
+                            fill="transparent"
+                            rx={4}
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => handleTaskClick(task.id)}
+                            onMouseEnter={(e) =>
+                              handleTaskHover(
+                                e,
+                                task.title,
+                                `${formatDate(task.startDate)} - ${formatDate(task.endDate)}`
+                              )
+                            }
+                            onMouseLeave={handleMouseLeave}
+                          />
+                        </>
                       )}
-
-                      {/* Clickable overlay */}
-                      <rect
-                        x={taskX}
-                        y={(ROW_HEIGHT - TASK_HEIGHT) / 2}
-                        width={taskWidth}
-                        height={TASK_HEIGHT}
-                        fill="transparent"
-                        rx={4}
-                        style={{ cursor: 'pointer' }}
-                        onClick={() => handleTaskClick(task.id)}
-                        onMouseEnter={(e) =>
-                          handleTaskHover(
-                            e,
-                            task.title,
-                            `${formatDate(task.startDate)} - ${formatDate(task.endDate)}`
-                          )
-                        }
-                        onMouseLeave={handleMouseLeave}
-                      />
 
                       {/* Progress text */}
                       {viewOptions.showProgress && taskWidth > 50 && (

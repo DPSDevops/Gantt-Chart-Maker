@@ -102,6 +102,46 @@ export const exportToCSV = (tasks: Task[], filename = 'gantt-data.csv'): void =>
   URL.revokeObjectURL(url);
 };
 
+export const exportToSVG = async (
+  elementId: string,
+  filename = 'gantt-chart.svg'
+): Promise<void> => {
+  const element = document.getElementById(elementId);
+  if (!element) {
+    throw new Error('Element not found');
+  }
+
+  // Clone the element to avoid modifying the original
+  const clone = element.cloneNode(true) as HTMLElement;
+  const svgElements = clone.querySelectorAll('svg');
+
+  if (svgElements.length === 0) {
+    throw new Error('No SVG elements found');
+  }
+
+  // Get all SVG content and combine
+  let svgContent = '';
+  svgElements.forEach((svg) => {
+    svgContent += svg.outerHTML;
+  });
+
+  // Create a wrapper SVG
+  const width = element.offsetWidth;
+  const height = element.offsetHeight;
+  const wrappedSVG = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+  ${svgContent}
+</svg>`;
+
+  const blob = new Blob([wrappedSVG], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.download = filename;
+  link.href = url;
+  link.click();
+  URL.revokeObjectURL(url);
+};
+
 export const importFromJSON = (file: File): Promise<Task[]> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

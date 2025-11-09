@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   BarChart3,
   List,
@@ -13,6 +13,8 @@ import { TaskList } from './components/TaskList/TaskList';
 import { ThemeSelector } from './components/ThemeSelector/ThemeSelector';
 import { ExportMenu } from './components/ExportMenu/ExportMenu';
 import { ViewControls } from './components/ViewControls/ViewControls';
+import { UndoRedo } from './components/UndoRedo/UndoRedo';
+import { SearchBar } from './components/SearchBar/SearchBar';
 import { useGanttStore } from './store/useGanttStore';
 import { sampleTasks, projectTemplates } from './utils/sampleData';
 import { importFromJSON } from './utils/exportUtils';
@@ -23,6 +25,7 @@ function App() {
   const { tasks, setTasks, clearAllTasks } = useGanttStore();
   const [viewMode, setViewMode] = useState<ViewMode>('chart');
   const [showTemplates, setShowTemplates] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleLoadSample = () => {
     if (
@@ -67,6 +70,20 @@ function App() {
     }
   };
 
+  // Filter tasks based on search query
+  const filteredTasks = useMemo(() => {
+    if (!searchQuery.trim()) return tasks;
+
+    const query = searchQuery.toLowerCase();
+    return tasks.filter(
+      (task) =>
+        task.title.toLowerCase().includes(query) ||
+        task.assignee?.toLowerCase().includes(query) ||
+        task.description?.toLowerCase().includes(query) ||
+        task.priority?.toLowerCase().includes(query)
+    );
+  }, [tasks, searchQuery]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       {/* Header */}
@@ -88,6 +105,7 @@ function App() {
             </div>
 
             <div className="flex items-center gap-3 flex-wrap">
+              <UndoRedo />
               <ThemeSelector />
               <ExportMenu />
             </div>
@@ -99,6 +117,18 @@ function App() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Toolbar */}
         <div className="mb-6 space-y-4">
+          {/* Search and Primary Actions */}
+          <div className="flex flex-wrap items-center gap-3 justify-between">
+            <SearchBar
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search tasks by title, assignee, or priority..."
+            />
+            <div className="text-sm text-gray-600">
+              {searchQuery && `${filteredTasks.length} of ${tasks.length} tasks`}
+            </div>
+          </div>
+
           {/* Primary Actions */}
           <div className="flex flex-wrap items-center gap-3">
             <TaskForm />

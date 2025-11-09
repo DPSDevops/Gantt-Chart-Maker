@@ -79,6 +79,16 @@ export const ViewControls: React.FC = () => {
           />
           <span className="text-sm font-medium text-gray-700">Progress</span>
         </label>
+
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={viewOptions.showMilestones}
+            onChange={(e) => setViewOptions({ showMilestones: e.target.checked })}
+            className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+          />
+          <span className="text-sm font-medium text-gray-700">Milestones</span>
+        </label>
       </div>
     </div>
   );

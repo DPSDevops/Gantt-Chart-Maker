@@ -21,6 +21,8 @@ export const TaskForm: React.FC<TaskFormProps> = ({ editingTask, onClose }) => {
     dependencies: [] as string[],
     color: '#3b82f6',
     description: '',
+    isMilestone: false,
+    priority: 'medium' as 'low' | 'medium' | 'high' | 'critical',
   });
 
   useEffect(() => {
@@ -34,6 +36,8 @@ export const TaskForm: React.FC<TaskFormProps> = ({ editingTask, onClose }) => {
         dependencies: editingTask.dependencies || [],
         color: editingTask.color || '#3b82f6',
         description: editingTask.description || '',
+        isMilestone: editingTask.isMilestone || false,
+        priority: editingTask.priority || 'medium',
       });
       setIsOpen(true);
     }
@@ -46,13 +50,15 @@ export const TaskForm: React.FC<TaskFormProps> = ({ editingTask, onClose }) => {
       id: editingTask?.id || Date.now().toString(),
       title: formData.title,
       startDate: new Date(formData.startDate),
-      endDate: new Date(formData.endDate),
-      progress: formData.progress,
+      endDate: formData.isMilestone ? new Date(formData.startDate) : new Date(formData.endDate),
+      progress: formData.isMilestone ? 100 : formData.progress,
       assignee: formData.assignee || undefined,
       dependencies:
         formData.dependencies.length > 0 ? formData.dependencies : undefined,
       color: formData.color,
       description: formData.description || undefined,
+      isMilestone: formData.isMilestone,
+      priority: formData.priority,
     };
 
     if (editingTask) {
@@ -75,6 +81,8 @@ export const TaskForm: React.FC<TaskFormProps> = ({ editingTask, onClose }) => {
       dependencies: [],
       color: '#3b82f6',
       description: '',
+      isMilestone: false,
+      priority: 'medium',
     });
     onClose?.();
   };
@@ -167,23 +175,89 @@ export const TaskForm: React.FC<TaskFormProps> = ({ editingTask, onClose }) => {
             </div>
           </div>
 
-          {/* Progress and Color */}
+          {/* Milestone and Priority */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Progress: {formData.progress}%
+              <label className="flex items-center gap-2 cursor-pointer p-3 border border-gray-300 rounded-lg hover:bg-gray-50">
+                <input
+                  type="checkbox"
+                  checked={formData.isMilestone}
+                  onChange={(e) =>
+                    setFormData({ ...formData, isMilestone: e.target.checked })
+                  }
+                  className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                />
+                <div>
+                  <div className="font-semibold text-gray-700">Milestone</div>
+                  <div className="text-xs text-gray-500">Mark as milestone (diamond)</div>
+                </div>
               </label>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={formData.progress}
-                onChange={(e) =>
-                  setFormData({ ...formData, progress: Number(e.target.value) })
-                }
-                className="w-full"
-              />
             </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Priority
+              </label>
+              <select
+                value={formData.priority}
+                onChange={(e) =>
+                  setFormData({ ...formData, priority: e.target.value as any })
+                }
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="critical">Critical</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Progress and Color */}
+          {!formData.isMilestone && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Progress: {formData.progress}%
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={formData.progress}
+                  onChange={(e) =>
+                    setFormData({ ...formData, progress: Number(e.target.value) })
+                  }
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Color
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    value={formData.color}
+                    onChange={(e) =>
+                      setFormData({ ...formData, color: e.target.value })
+                    }
+                    className="w-16 h-10 border border-gray-300 rounded-lg cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={formData.color}
+                    onChange={(e) =>
+                      setFormData({ ...formData, color: e.target.value })
+                    }
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="#3b82f6"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {formData.isMilestone && (
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Color
@@ -208,7 +282,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({ editingTask, onClose }) => {
                 />
               </div>
             </div>
-          </div>
+          )}
 
           {/* Assignee */}
           <div>

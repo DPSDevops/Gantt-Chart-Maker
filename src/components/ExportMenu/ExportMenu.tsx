@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Download, FileImage, FileText, FileJson, FileSpreadsheet } from 'lucide-react';
+import { Download, FileImage, FileText, FileJson, FileSpreadsheet, FileCode } from 'lucide-react';
 import { useGanttStore } from '../../store/useGanttStore';
 import {
   exportToPNG,
   exportToPDF,
   exportToJSON,
   exportToCSV,
+  exportToSVG,
 } from '../../utils/exportUtils';
 
 export const ExportMenu: React.FC = () => {
@@ -13,7 +14,7 @@ export const ExportMenu: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  const handleExport = async (format: 'png' | 'pdf' | 'json' | 'csv') => {
+  const handleExport = async (format: 'png' | 'pdf' | 'json' | 'csv' | 'svg') => {
     setIsExporting(true);
     try {
       switch (format) {
@@ -22,6 +23,9 @@ export const ExportMenu: React.FC = () => {
           break;
         case 'pdf':
           await exportToPDF('gantt-chart-container');
+          break;
+        case 'svg':
+          await exportToSVG('gantt-chart-container');
           break;
         case 'json':
           exportToJSON(tasks);
@@ -74,6 +78,15 @@ export const ExportMenu: React.FC = () => {
               >
                 <FileText size={20} className="text-red-600" />
                 <span className="font-medium">Export as PDF</span>
+              </button>
+
+              <button
+                onClick={() => handleExport('svg')}
+                disabled={isExporting}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 rounded-lg transition-colors text-left"
+              >
+                <FileCode size={20} className="text-orange-600" />
+                <span className="font-medium">Export as SVG</span>
               </button>
 
               <button

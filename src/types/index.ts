@@ -8,6 +8,9 @@ export interface Task {
   dependencies?: string[]; // Array of task IDs
   color?: string;
   description?: string;
+  isMilestone?: boolean; // Milestones are single-day markers
+  priority?: 'low' | 'medium' | 'high' | 'critical';
+  tags?: string[];
 }
 
 export interface GanttData {
@@ -36,7 +39,7 @@ export interface Theme {
   };
 }
 
-export type ExportFormat = 'png' | 'pdf' | 'json' | 'csv';
+export type ExportFormat = 'png' | 'pdf' | 'json' | 'csv' | 'svg';
 
 export interface ExportOptions {
   format: ExportFormat;
@@ -51,5 +54,7 @@ export interface ViewOptions {
   showToday: boolean;
   showDependencies: boolean;
   showProgress: boolean;
+  showMilestones: boolean;
+  showCriticalPath: boolean;
   timeScale: 'day' | 'week' | 'month';
 }

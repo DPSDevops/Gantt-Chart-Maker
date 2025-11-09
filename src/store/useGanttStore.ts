@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { Task, ThemeType, ViewOptions } from '../types';
 
 interface GanttStore {
@@ -6,6 +7,8 @@ interface GanttStore {
   selectedTheme: ThemeType;
   viewOptions: ViewOptions;
   selectedTask: string | null;
+  history: Task[][];
+  historyIndex: number;
 
   // Actions
   addTask: (task: Task) => void;
@@ -16,6 +19,10 @@ interface GanttStore {
   setViewOptions: (options: Partial<ViewOptions>) => void;
   setSelectedTask: (id: string | null) => void;
   clearAllTasks: () => void;
+  undo: () => void;
+  redo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
 }
 
 const defaultViewOptions: ViewOptions = {
@@ -24,43 +31,118 @@ const defaultViewOptions: ViewOptions = {
   showToday: true,
   showDependencies: true,
   showProgress: true,
+  showMilestones: true,
+  showCriticalPath: false,
   timeScale: 'day',
 };
 
-export const useGanttStore = create<GanttStore>((set) => ({
-  tasks: [],
-  selectedTheme: 'professional',
-  viewOptions: defaultViewOptions,
-  selectedTask: null,
+const addToHistory = (state: GanttStore): Partial<GanttStore> => {
+  const newHistory = state.history.slice(0, state.historyIndex + 1);
+  newHistory.push(JSON.parse(JSON.stringify(state.tasks)));
+  return {
+    history: newHistory.slice(-50), // Keep last 50 states
+    historyIndex: Math.min(newHistory.length - 1, 49),
+  };
+};
 
-  addTask: (task) =>
-    set((state) => ({
-      tasks: [...state.tasks, task],
-    })),
+export const useGanttStore = create<GanttStore>()(
+  persist(
+    (set, get) => ({
+      tasks: [],
+      selectedTheme: 'professional',
+      viewOptions: defaultViewOptions,
+      selectedTask: null,
+      history: [[]],
+      historyIndex: 0,
 
-  updateTask: (id, updates) =>
-    set((state) => ({
-      tasks: state.tasks.map((task) =>
-        task.id === id ? { ...task, ...updates } : task
-      ),
-    })),
+      addTask: (task) =>
+        set((state) => {
+          const newTasks = [...state.tasks, task];
+          return {
+            tasks: newTasks,
+            ...addToHistory(state),
+          };
+        }),
 
-  deleteTask: (id) =>
-    set((state) => ({
-      tasks: state.tasks.filter((task) => task.id !== id),
-      selectedTask: state.selectedTask === id ? null : state.selectedTask,
-    })),
+      updateTask: (id, updates) =>
+        set((state) => {
+          const newTasks = state.tasks.map((task) =>
+            task.id === id ? { ...task, ...updates } : task
+          );
+          return {
+            tasks: newTasks,
+            ...addToHistory(state),
+          };
+        }),
 
-  setTasks: (tasks) => set({ tasks }),
+      deleteTask: (id) =>
+        set((state) => {
+          const newTasks = state.tasks.filter((task) => task.id !== id);
+          return {
+            tasks: newTasks,
+            selectedTask: state.selectedTask === id ? null : state.selectedTask,
+            ...addToHistory(state),
+          };
+        }),
 
-  setTheme: (theme) => set({ selectedTheme: theme }),
+      setTasks: (tasks) =>
+        set((state) => ({
+          tasks,
+          ...addToHistory(state),
+        })),
 
-  setViewOptions: (options) =>
-    set((state) => ({
-      viewOptions: { ...state.viewOptions, ...options },
-    })),
+      setTheme: (theme) => set({ selectedTheme: theme }),
 
-  setSelectedTask: (id) => set({ selectedTask: id }),
+      setViewOptions: (options) =>
+        set((state) => ({
+          viewOptions: { ...state.viewOptions, ...options },
+        })),
 
-  clearAllTasks: () => set({ tasks: [], selectedTask: null }),
-}));
+      setSelectedTask: (id) => set({ selectedTask: id }),
+
+      clearAllTasks: () =>
+        set((state) => ({
+          tasks: [],
+          selectedTask: null,
+          ...addToHistory(state),
+        })),
+
+      undo: () =>
+        set((state) => {
+          if (state.historyIndex > 0) {
+            const newIndex = state.historyIndex - 1;
+            return {
+              tasks: JSON.parse(JSON.stringify(state.history[newIndex])),
+              historyIndex: newIndex,
+            };
+          }
+          return state;
+        }),
+
+      redo: () =>
+        set((state) => {
+          if (state.historyIndex < state.history.length - 1) {
+            const newIndex = state.historyIndex + 1;
+            return {
+              tasks: JSON.parse(JSON.stringify(state.history[newIndex])),
+              historyIndex: newIndex,
+            };
+          }
+          return state;
+        }),
+
+      canUndo: () => get().historyIndex > 0,
+      canRedo: () => get().historyIndex < get().history.length - 1,
+    }),
+    {
+      name: 'gantt-storage',
+      version: 1,
+      // Custom serialization to handle Date objects
+      partialize: (state) => ({
+        tasks: state.tasks,
+        selectedTheme: state.selectedTheme,
+        viewOptions: state.viewOptions,
+      }),
+    }
+  )
+);
