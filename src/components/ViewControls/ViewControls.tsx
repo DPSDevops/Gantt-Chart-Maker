@@ -89,6 +89,16 @@ export const ViewControls: React.FC = () => {
           />
           <span className="text-sm font-medium text-gray-700">Milestones</span>
         </label>
+
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={viewOptions.showCriticalPath}
+            onChange={(e) => setViewOptions({ showCriticalPath: e.target.checked })}
+            className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+          />
+          <span className="text-sm font-medium text-gray-700">Critical Path ⚡</span>
+        </label>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   BarChart3,
   List,
@@ -9,11 +9,14 @@ import {
   Keyboard,
 } from 'lucide-react';
 import { GanttChart } from './components/GanttChart/GanttChart';
+import type { GanttChartRef } from './components/GanttChart/GanttChart';
 import { TaskForm } from './components/TaskForm/TaskForm';
 import { TaskList } from './components/TaskList/TaskList';
 import { ThemeSelector } from './components/ThemeSelector/ThemeSelector';
 import { ExportMenu } from './components/ExportMenu/ExportMenu';
 import { ViewControls } from './components/ViewControls/ViewControls';
+import { ZoomControls } from './components/ZoomControls/ZoomControls';
+import { GroupControls } from './components/GroupControls/GroupControls';
 import { UndoRedo } from './components/UndoRedo/UndoRedo';
 import { SearchBar } from './components/SearchBar/SearchBar';
 import { KeyboardShortcuts } from './components/KeyboardShortcuts/KeyboardShortcuts';
@@ -25,7 +28,8 @@ import { importFromJSON } from './utils/exportUtils';
 type ViewMode = 'chart' | 'list';
 
 function App() {
-  const { tasks, setTasks, clearAllTasks } = useGanttStore();
+  const { tasks, setTasks, clearAllTasks, viewOptions, setViewOptions } = useGanttStore();
+  const ganttChartRef = useRef<GanttChartRef>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('chart');
   const [showTemplates, setShowTemplates] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -145,6 +149,10 @@ function App() {
   const handleClearFilters = () => {
     setFilterPriorities([]);
     setFilterStatuses([]);
+  };
+
+  const handleScrollToToday = () => {
+    ganttChartRef.current?.scrollToToday();
   };
 
   const activeFilterCount = filterPriorities.length + filterStatuses.length;
@@ -314,12 +322,27 @@ function App() {
           </div>
 
           {/* View Controls */}
-          {viewMode === 'chart' && tasks.length > 0 && <ViewControls />}
+          {viewMode === 'chart' && tasks.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-4">
+                <ZoomControls
+                  viewOptions={viewOptions}
+                  onViewOptionsChange={setViewOptions}
+                  onScrollToToday={handleScrollToToday}
+                />
+                <GroupControls
+                  viewOptions={viewOptions}
+                  onViewOptionsChange={setViewOptions}
+                />
+              </div>
+              <ViewControls />
+            </div>
+          )}
         </div>
 
         {/* Content */}
         <div className="bg-white rounded-xl shadow-lg p-6">
-          {viewMode === 'chart' ? <GanttChart /> : <TaskList />}
+          {viewMode === 'chart' ? <GanttChart ref={ganttChartRef} /> : <TaskList />}
         </div>
 
         {/* Stats Footer */}

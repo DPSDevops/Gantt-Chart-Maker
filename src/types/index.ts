@@ -58,4 +58,13 @@ export interface ViewOptions {
   showMilestones: boolean;
   showCriticalPath: boolean;
   timeScale: 'day' | 'week' | 'month';
+  groupBy?: 'none' | 'assignee' | 'priority' | 'status';
+}
+
+export interface TaskGroup {
+  key: string;
+  label: string;
+  tasks: Task[];
+  isCollapsed: boolean;
+  color?: string;
 }
