@@ -10,6 +10,7 @@ export interface Task {
   description?: string;
   isMilestone?: boolean; // Milestones are single-day markers
   priority?: 'low' | 'medium' | 'high' | 'critical';
+  status?: 'not-started' | 'in-progress' | 'completed' | 'on-hold';
   tags?: string[];
 }
 

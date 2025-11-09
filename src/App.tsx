@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   BarChart3,
   List,
@@ -6,6 +6,7 @@ import {
   Trash2,
   Download,
   BookTemplate,
+  Keyboard,
 } from 'lucide-react';
 import { GanttChart } from './components/GanttChart/GanttChart';
 import { TaskForm } from './components/TaskForm/TaskForm';
@@ -15,6 +16,8 @@ import { ExportMenu } from './components/ExportMenu/ExportMenu';
 import { ViewControls } from './components/ViewControls/ViewControls';
 import { UndoRedo } from './components/UndoRedo/UndoRedo';
 import { SearchBar } from './components/SearchBar/SearchBar';
+import { KeyboardShortcuts } from './components/KeyboardShortcuts/KeyboardShortcuts';
+import { FilterPanel } from './components/FilterPanel/FilterPanel';
 import { useGanttStore } from './store/useGanttStore';
 import { sampleTasks, projectTemplates } from './utils/sampleData';
 import { importFromJSON } from './utils/exportUtils';
@@ -26,6 +29,9 @@ function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('chart');
   const [showTemplates, setShowTemplates] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+  const [filterPriorities, setFilterPriorities] = useState<('low' | 'medium' | 'high' | 'critical')[]>([]);
+  const [filterStatuses, setFilterStatuses] = useState<('not-started' | 'in-progress' | 'completed' | 'on-hold')[]>([]);
 
   const handleLoadSample = () => {
     if (
@@ -70,19 +76,78 @@ function App() {
     }
   };
 
-  // Filter tasks based on search query
-  const filteredTasks = useMemo(() => {
-    if (!searchQuery.trim()) return tasks;
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setShowKeyboardShortcuts(true);
+      }
+      if (e.key === 'Escape') {
+        setShowKeyboardShortcuts(false);
+      }
+    };
 
-    const query = searchQuery.toLowerCase();
-    return tasks.filter(
-      (task) =>
-        task.title.toLowerCase().includes(query) ||
-        task.assignee?.toLowerCase().includes(query) ||
-        task.description?.toLowerCase().includes(query) ||
-        task.priority?.toLowerCase().includes(query)
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Filter tasks based on search query, priority, and status
+  const filteredTasks = useMemo(() => {
+    let filtered = tasks;
+
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (task) =>
+          task.title.toLowerCase().includes(query) ||
+          task.assignee?.toLowerCase().includes(query) ||
+          task.description?.toLowerCase().includes(query) ||
+          task.priority?.toLowerCase().includes(query) ||
+          task.status?.toLowerCase().includes(query)
+      );
+    }
+
+    // Priority filter
+    if (filterPriorities.length > 0) {
+      filtered = filtered.filter(
+        (task) => task.priority && filterPriorities.includes(task.priority)
+      );
+    }
+
+    // Status filter
+    if (filterStatuses.length > 0) {
+      filtered = filtered.filter(
+        (task) => task.status && filterStatuses.includes(task.status)
+      );
+    }
+
+    return filtered;
+  }, [tasks, searchQuery, filterPriorities, filterStatuses]);
+
+  const handlePriorityToggle = (priority: 'low' | 'medium' | 'high' | 'critical') => {
+    setFilterPriorities((prev) =>
+      prev.includes(priority)
+        ? prev.filter((p) => p !== priority)
+        : [...prev, priority]
     );
-  }, [tasks, searchQuery]);
+  };
+
+  const handleStatusToggle = (status: 'not-started' | 'in-progress' | 'completed' | 'on-hold') => {
+    setFilterStatuses((prev) =>
+      prev.includes(status)
+        ? prev.filter((s) => s !== status)
+        : [...prev, status]
+    );
+  };
+
+  const handleClearFilters = () => {
+    setFilterPriorities([]);
+    setFilterStatuses([]);
+  };
+
+  const activeFilterCount = filterPriorities.length + filterStatuses.length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -105,6 +170,13 @@ function App() {
             </div>
 
             <div className="flex items-center gap-3 flex-wrap">
+              <button
+                onClick={() => setShowKeyboardShortcuts(true)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Keyboard Shortcuts (?)"
+              >
+                <Keyboard size={20} />
+              </button>
               <UndoRedo />
               <ThemeSelector />
               <ExportMenu />
@@ -117,15 +189,26 @@ function App() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Toolbar */}
         <div className="mb-6 space-y-4">
-          {/* Search and Primary Actions */}
+          {/* Search and Filters */}
           <div className="flex flex-wrap items-center gap-3 justify-between">
-            <SearchBar
-              value={searchQuery}
-              onChange={setSearchQuery}
-              placeholder="Search tasks by title, assignee, or priority..."
-            />
+            <div className="flex items-center gap-3">
+              <SearchBar
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search tasks by title, assignee, or priority..."
+              />
+              <FilterPanel
+                priorities={filterPriorities}
+                statuses={filterStatuses}
+                onPriorityToggle={handlePriorityToggle}
+                onStatusToggle={handleStatusToggle}
+                onClearFilters={handleClearFilters}
+                activeCount={activeFilterCount}
+              />
+            </div>
             <div className="text-sm text-gray-600">
-              {searchQuery && `${filteredTasks.length} of ${tasks.length} tasks`}
+              {(searchQuery || activeFilterCount > 0) &&
+                `${filteredTasks.length} of ${tasks.length} tasks`}
             </div>
           </div>
 
@@ -273,6 +356,12 @@ function App() {
           Create beautiful Gantt charts with ease
         </p>
       </footer>
+
+      {/* Keyboard Shortcuts Modal */}
+      <KeyboardShortcuts
+        isOpen={showKeyboardShortcuts}
+        onClose={() => setShowKeyboardShortcuts(false)}
+      />
     </div>
   );
 }
