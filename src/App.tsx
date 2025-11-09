@@ -7,6 +7,7 @@ import {
   Download,
   BookTemplate,
   Keyboard,
+  BarChart2,
 } from 'lucide-react';
 import { GanttChart } from './components/GanttChart/GanttChart';
 import type { GanttChartRef } from './components/GanttChart/GanttChart';
@@ -21,14 +22,31 @@ import { UndoRedo } from './components/UndoRedo/UndoRedo';
 import { SearchBar } from './components/SearchBar/SearchBar';
 import { KeyboardShortcuts } from './components/KeyboardShortcuts/KeyboardShortcuts';
 import { FilterPanel } from './components/FilterPanel/FilterPanel';
+import { TaskDetailsPanel } from './components/TaskDetailsPanel/TaskDetailsPanel';
+import { BulkOperations } from './components/BulkOperations/BulkOperations';
+import { StatsDashboard } from './components/StatsDashboard/StatsDashboard';
 import { useGanttStore } from './store/useGanttStore';
 import { sampleTasks, projectTemplates } from './utils/sampleData';
 import { importFromJSON } from './utils/exportUtils';
+import type { Task } from './types';
 
-type ViewMode = 'chart' | 'list';
+type ViewMode = 'chart' | 'list' | 'stats';
 
 function App() {
-  const { tasks, setTasks, clearAllTasks, viewOptions, setViewOptions } = useGanttStore();
+  const {
+    tasks,
+    setTasks,
+    clearAllTasks,
+    viewOptions,
+    setViewOptions,
+    selectedTask,
+    setSelectedTask,
+    duplicateTask,
+    deleteTasks,
+    duplicateTasks,
+    bulkUpdateTasks,
+  } = useGanttStore();
+
   const ganttChartRef = useRef<GanttChartRef>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('chart');
   const [showTemplates, setShowTemplates] = useState(false);
@@ -36,6 +54,8 @@ function App() {
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [filterPriorities, setFilterPriorities] = useState<('low' | 'medium' | 'high' | 'critical')[]>([]);
   const [filterStatuses, setFilterStatuses] = useState<('not-started' | 'in-progress' | 'completed' | 'on-hold')[]>([]);
+  const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   const handleLoadSample = () => {
     if (
@@ -77,6 +97,7 @@ function App() {
   const handleClearAll = () => {
     if (confirm('Are you sure you want to delete all tasks? This cannot be undone.')) {
       clearAllTasks();
+      setSelectedTasks(new Set());
     }
   };
 
@@ -89,12 +110,14 @@ function App() {
       }
       if (e.key === 'Escape') {
         setShowKeyboardShortcuts(false);
+        setSelectedTask(null);
+        setSelectedTasks(new Set());
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [setSelectedTask]);
 
   // Filter tasks based on search query, priority, and status
   const filteredTasks = useMemo(() => {
@@ -155,12 +178,54 @@ function App() {
     ganttChartRef.current?.scrollToToday();
   };
 
+  // Bulk operations handlers
+  const handleClearSelection = () => {
+    setSelectedTasks(new Set());
+  };
+
+  const handleDeleteSelected = () => {
+    if (confirm(`Delete ${selectedTasks.size} selected tasks?`)) {
+      deleteTasks(Array.from(selectedTasks));
+      setSelectedTasks(new Set());
+    }
+  };
+
+  const handleDuplicateSelected = () => {
+    duplicateTasks(Array.from(selectedTasks));
+    setSelectedTasks(new Set());
+  };
+
+  const handleBulkUpdatePriority = (priority: 'low' | 'medium' | 'high' | 'critical') => {
+    bulkUpdateTasks(Array.from(selectedTasks), { priority });
+  };
+
+  const handleBulkUpdateStatus = (status: 'not-started' | 'in-progress' | 'completed' | 'on-hold') => {
+    bulkUpdateTasks(Array.from(selectedTasks), { status });
+  };
+
+  const handleBulkUpdateAssignee = (assignee: string) => {
+    bulkUpdateTasks(Array.from(selectedTasks), { assignee });
+  };
+
+  // Task details panel handlers
+  const selectedTaskData = tasks.find(t => t.id === selectedTask);
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setSelectedTask(null);
+  };
+
+  const handleDuplicateTask = (task: Task) => {
+    duplicateTask(task.id);
+    setSelectedTask(null);
+  };
+
   const activeFilterCount = filterPriorities.length + filterStatuses.length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       {/* Header */}
-      <header className="bg-white shadow-md border-b border-gray-200">
+      <header className="bg-white shadow-md border-b border-gray-200 no-print">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3">
@@ -222,7 +287,7 @@ function App() {
 
           {/* Primary Actions */}
           <div className="flex flex-wrap items-center gap-3">
-            <TaskForm />
+            <TaskForm editingTask={editingTask} onClose={() => setEditingTask(null)} />
 
             <div className="relative">
               <button
@@ -319,6 +384,17 @@ function App() {
               <List size={18} />
               List View
             </button>
+            <button
+              onClick={() => setViewMode('stats')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
+                viewMode === 'stats'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <BarChart2 size={18} />
+              Statistics
+            </button>
           </div>
 
           {/* View Controls */}
@@ -341,13 +417,19 @@ function App() {
         </div>
 
         {/* Content */}
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          {viewMode === 'chart' ? <GanttChart ref={ganttChartRef} /> : <TaskList />}
+        <div className="bg-white rounded-xl shadow-lg p-6 page-break-avoid">
+          {viewMode === 'chart' ? (
+            <GanttChart ref={ganttChartRef} />
+          ) : viewMode === 'list' ? (
+            <TaskList />
+          ) : (
+            <StatsDashboard tasks={tasks} />
+          )}
         </div>
 
         {/* Stats Footer */}
-        {tasks.length > 0 && (
-          <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {viewMode !== 'stats' && tasks.length > 0 && (
+          <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4 no-print">
             <div className="bg-white rounded-lg shadow-md p-4">
               <div className="text-sm text-gray-600">Total Tasks</div>
               <div className="text-2xl font-bold text-gray-900">
@@ -371,7 +453,7 @@ function App() {
       </main>
 
       {/* Footer */}
-      <footer className="mt-12 py-6 text-center text-gray-600 text-sm">
+      <footer className="mt-12 py-6 text-center text-gray-600 text-sm no-print">
         <p>
           Built with React, TypeScript, and Tailwind CSS
         </p>
@@ -384,6 +466,28 @@ function App() {
       <KeyboardShortcuts
         isOpen={showKeyboardShortcuts}
         onClose={() => setShowKeyboardShortcuts(false)}
+      />
+
+      {/* Task Details Panel */}
+      {selectedTaskData && (
+        <TaskDetailsPanel
+          task={selectedTaskData}
+          onClose={() => setSelectedTask(null)}
+          onEdit={handleEditTask}
+          onDuplicate={handleDuplicateTask}
+        />
+      )}
+
+      {/* Bulk Operations Bar */}
+      <BulkOperations
+        selectedTasks={selectedTasks}
+        tasks={tasks}
+        onClearSelection={handleClearSelection}
+        onDeleteSelected={handleDeleteSelected}
+        onDuplicateSelected={handleDuplicateSelected}
+        onBulkUpdatePriority={handleBulkUpdatePriority}
+        onBulkUpdateStatus={handleBulkUpdateStatus}
+        onBulkUpdateAssignee={handleBulkUpdateAssignee}
       />
     </div>
   );

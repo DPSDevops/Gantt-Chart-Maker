@@ -23,6 +23,12 @@ interface GanttStore {
   redo: () => void;
   canUndo: () => boolean;
   canRedo: () => boolean;
+
+  // Bulk operations
+  duplicateTask: (id: string) => void;
+  deleteTasks: (ids: string[]) => void;
+  duplicateTasks: (ids: string[]) => void;
+  bulkUpdateTasks: (ids: string[], updates: Partial<Task>) => void;
 }
 
 const defaultViewOptions: ViewOptions = {
@@ -133,6 +139,67 @@ export const useGanttStore = create<GanttStore>()(
 
       canUndo: () => get().historyIndex > 0,
       canRedo: () => get().historyIndex < get().history.length - 1,
+
+      // Duplicate a single task
+      duplicateTask: (id) =>
+        set((state) => {
+          const task = state.tasks.find((t) => t.id === id);
+          if (!task) return state;
+
+          const newTask: Task = {
+            ...task,
+            id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            title: `${task.title} (Copy)`,
+          };
+
+          const newTasks = [...state.tasks, newTask];
+          return {
+            tasks: newTasks,
+            ...addToHistory(state),
+          };
+        }),
+
+      // Delete multiple tasks
+      deleteTasks: (ids) =>
+        set((state) => {
+          const idsSet = new Set(ids);
+          const newTasks = state.tasks.filter((task) => !idsSet.has(task.id));
+          return {
+            tasks: newTasks,
+            selectedTask: idsSet.has(state.selectedTask || '') ? null : state.selectedTask,
+            ...addToHistory(state),
+          };
+        }),
+
+      // Duplicate multiple tasks
+      duplicateTasks: (ids) =>
+        set((state) => {
+          const tasksToDuplicate = state.tasks.filter((t) => ids.includes(t.id));
+          const duplicatedTasks: Task[] = tasksToDuplicate.map((task) => ({
+            ...task,
+            id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            title: `${task.title} (Copy)`,
+          }));
+
+          const newTasks = [...state.tasks, ...duplicatedTasks];
+          return {
+            tasks: newTasks,
+            ...addToHistory(state),
+          };
+        }),
+
+      // Bulk update multiple tasks
+      bulkUpdateTasks: (ids, updates) =>
+        set((state) => {
+          const idsSet = new Set(ids);
+          const newTasks = state.tasks.map((task) =>
+            idsSet.has(task.id) ? { ...task, ...updates } : task
+          );
+          return {
+            tasks: newTasks,
+            ...addToHistory(state),
+          };
+        }),
     }),
     {
       name: 'gantt-storage',

@@ -12,3 +12,70 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Print Styles */
+@media print {
+  body {
+    background-color: white !important;
+  }
+
+  /* Hide non-essential elements when printing */
+  header,
+  footer,
+  .no-print,
+  button:not(.print-keep),
+  input[type="file"],
+  .bulk-operations-bar,
+  .task-details-panel {
+    display: none !important;
+  }
+
+  /* Optimize Gantt chart for printing */
+  #gantt-chart-container {
+    max-height: none !important;
+    overflow: visible !important;
+    page-break-inside: avoid;
+  }
+
+  /* Ensure good contrast */
+  .text-gray-600,
+  .text-gray-700,
+  .text-gray-900 {
+    color: #000 !important;
+  }
+
+  /* Remove shadows for cleaner print */
+  .shadow,
+  .shadow-sm,
+  .shadow-md,
+  .shadow-lg,
+  .shadow-xl,
+  .shadow-2xl {
+    box-shadow: none !important;
+  }
+
+  /* Remove gradients for simpler print */
+  .bg-gradient-to-br,
+  .bg-gradient-to-r {
+    background: white !important;
+    border: 1px solid #ccc !important;
+  }
+
+  /* Ensure charts are visible */
+  svg {
+    page-break-inside: avoid;
+  }
+
+  /* Page breaks */
+  .page-break-before {
+    page-break-before: always;
+  }
+
+  .page-break-after {
+    page-break-after: always;
+  }
+
+  .page-break-avoid {
+    page-break-inside: avoid;
+  }
+}
